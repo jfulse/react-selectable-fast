@@ -36,6 +36,7 @@ type TProcessItemOptions = TSelectItemsOptions & {
 export type TSelectableGroupProps = {
   globalMouse?: boolean
   ignoreList?: string[]
+  disableSelectStartList?: string[]
   scrollSpeed?: number
   minimumSpeedFactor?: number
   allowClickWithoutSelected?: boolean
@@ -95,6 +96,7 @@ class SelectableGroup extends Component<TSelectableGroupProps> {
     tolerance: 0,
     globalMouse: false,
     ignoreList: [],
+    disableSelectStartList: [],
     scrollSpeed: 0.25,
     minimumSpeedFactor: 60,
     duringSelection: noop,
@@ -130,8 +132,11 @@ class SelectableGroup extends Component<TSelectableGroupProps> {
   selectedItems = new Set<TSelectableItem>()
   selectingItems = new Set<TSelectableItem>()
   ignoreCheckCache = new Map<HTMLElement, Boolean>()
+  disableCheckCache = new Map<HTMLElement, Boolean>()
   ignoreList = this.props.ignoreList!.concat(['.selectable-select-all', '.selectable-deselect-all'])
+  disableSelectStartList = this.props.disableSelectStartList
   ignoreListNodes: HTMLElement[] = []
+  disableSelectStartListNodes: HTMLElement[] = []
 
   selectbox: Maybe<Selectbox> = null
   selectableGroup: Maybe<HTMLElement> = null
@@ -411,6 +416,7 @@ class SelectableGroup extends Component<TSelectableGroupProps> {
 
   selectAll = () => {
     this.updateWhiteListNodes()
+    this.updateDisableSelectStartListNodes()
 
     for (const item of this.registry.values()) {
       if (!this.isInIgnoreList(item.node) && !item.state.isSelected) {
@@ -441,11 +447,43 @@ class SelectableGroup extends Component<TSelectableGroupProps> {
     return shouldBeIgnored
   }
 
+  isInDisableSelectStartList(target: HTMLElement | null) {
+    if (!target) {
+      return
+    }
+
+    if (this.disableCheckCache.get(target) !== undefined) {
+      return this.disableCheckCache.get(target)
+    }
+
+    const shouldBeDisabled = this.disableSelectStartListNodes.some(
+      disabledNode => target === disabledNode || disabledNode.contains(target)
+    )
+
+    this.disableCheckCache.set(target, shouldBeDisabled)
+
+    return shouldBeDisabled
+  }
+
   updateWhiteListNodes() {
     this.ignoreListNodes = Array.from(document.querySelectorAll(this.ignoreList.join(', ')))
   }
 
+  updateDisableSelectStartListNodes() {
+    if (this.disableSelectStartList!.length > 0) {
+      this.disableSelectStartListNodes = Array.from(
+        document.querySelectorAll(this.disableSelectStartList!.join(', '))
+      )
+    }
+  }
+
   mouseDown = (e: Event) => {
+    if (this.isInDisableSelectStartList(e.target as HTMLElement)) {
+      this.mouseDownStarted = false
+
+      return
+    }
+
     const isNotLeftButtonClick =
       !e.type.includes('touch') &&
       !detectMouseButton(e as any, 1, { allowShiftClick: this.props.allowShiftClick })
@@ -454,6 +492,7 @@ class SelectableGroup extends Component<TSelectableGroupProps> {
     }
 
     this.updateWhiteListNodes()
+    this.updateDisableSelectStartListNodes()
 
     if (this.isInIgnoreList(e.target as HTMLElement)) {
       this.mouseDownStarted = false
