@@ -132,7 +132,6 @@ class SelectableGroup extends Component<TSelectableGroupProps> {
   selectedItems = new Set<TSelectableItem>()
   selectingItems = new Set<TSelectableItem>()
   ignoreCheckCache = new Map<HTMLElement, Boolean>()
-  disableCheckCache = new Map<HTMLElement, Boolean>()
   ignoreList = this.props.ignoreList!.concat(['.selectable-select-all', '.selectable-deselect-all'])
   disableSelectStartList = this.props.disableSelectStartList
   ignoreListNodes: HTMLElement[] = []
@@ -452,17 +451,9 @@ class SelectableGroup extends Component<TSelectableGroupProps> {
       return
     }
 
-    if (this.disableCheckCache.get(target) !== undefined) {
-      return this.disableCheckCache.get(target)
-    }
-
-    const shouldBeDisabled = this.disableSelectStartListNodes.some(
+    return this.disableSelectStartListNodes.some(
       disabledNode => target === disabledNode || disabledNode.contains(target)
     )
-
-    this.disableCheckCache.set(target, shouldBeDisabled)
-
-    return shouldBeDisabled
   }
 
   updateWhiteListNodes() {
